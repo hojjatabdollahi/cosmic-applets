@@ -626,6 +626,7 @@ impl cosmic::Application for Audio {
                     },
                     self.model.sinks(),
                     Message::OutputToggle,
+                    true,
                     Message::SetDefaultSink,
                 ),
                 revealer(
@@ -637,6 +638,7 @@ impl cosmic::Application for Audio {
                     },
                     self.model.sources(),
                     Message::InputToggle,
+                    true,
                     Message::SetDefaultSource,
                 )
             ]
@@ -760,17 +762,32 @@ fn revealer(
     selected: String,
     devices: &[String],
     toggle: Message,
+    show_checkmark: bool,
     mut change: impl FnMut(usize) -> Message + 'static,
 ) -> widget::Column<'static, Message, crate::Theme, Renderer> {
     if open {
+        let selected_clone = selected.clone();
         devices.iter().cloned().enumerate().fold(
             column![revealer_head(open, title, selected, toggle)].width(Length::Fill),
             |col, (id, name)| {
+                let check = if show_checkmark && name == selected_clone {
+                    container(
+                        icon::from_name("emblem-ok-symbolic")
+                            .size(12)
+                            .symbolic(true),
+                    )
+                    .center(Length::Fixed(24.0))
+                } else {
+                    container(space::horizontal()).center(Length::Fixed(24.0))
+                };
                 col.push(
-                    menu_button(text::body(name))
-                        .on_press(change(id))
-                        .width(Length::Fill)
-                        .padding([8, 48]),
+                    menu_button(
+                        row![check, text::body(name).width(Length::Fill),]
+                            .align_y(Alignment::Center),
+                    )
+                    .on_press(change(id))
+                    .width(Length::Fill)
+                    .padding([8, 24]),
                 )
             },
         )
@@ -780,14 +797,26 @@ fn revealer(
 }
 
 fn revealer_head(
-    _open: bool,
+    open: bool,
     title: String,
     selected: String,
     toggle: Message,
 ) -> cosmic::widget::Button<'static, Message> {
-    menu_button(column![
-        text::body(title).width(Length::Fill),
-        text::caption(selected),
-    ])
+    let chevron = if open {
+        "go-down-symbolic"
+    } else {
+        "go-next-symbolic"
+    };
+    menu_button(
+        row![
+            column![
+                text::body(title).width(Length::Fill),
+                text::caption(selected),
+            ]
+            .width(Length::Fill),
+            container(icon::from_name(chevron).size(16).symbolic(true)).center(Length::Fixed(24.0)),
+        ]
+        .align_y(Alignment::Center),
+    )
     .on_press(toggle)
 }
